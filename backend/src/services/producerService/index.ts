@@ -1,56 +1,51 @@
-import { findAllMovies } from "../../repositories/movieRepository";
+import { findWinningMovieCreditsSortedByYear } from "../../repositories/movieRepository";
 
 import type { Movie } from "../../types/movie";
 import type { ProducerInterval, ProducerIntervalResponse } from "./types";
 
-function groupWinningYearsByProducer(movies: Movie[]): Map<string, number[]> {
-  const winningYearsByProducer = new Map<string, number[]>();
-
-  for (const movie of movies) {
-    if (!movie.winner) {
-      continue;
-    }
-
-    for (const producer of movie.producers) {
-      const years = winningYearsByProducer.get(producer) ?? [];
-      years.push(movie.year);
-      winningYearsByProducer.set(producer, years);
-    }
-  }
-
-  return winningYearsByProducer;
-}
-
-function calculateIntervals(winningYearsByProducer: Map<string, number[]>): ProducerInterval[] {
+function calculateIntervals(winningCredits: Movie[]): ProducerInterval[] {
+  const lastWinYearByProducer = new Map<string, number>();
   const intervals: ProducerInterval[] = [];
 
-  for (const [producer, years] of winningYearsByProducer) {
-    const sortedYears = [...years].sort((a, b) => a - b);
+  for (const { producer, year } of winningCredits) {
+    const previousWin = lastWinYearByProducer.get(producer);
 
-    for (let i = 1; i < sortedYears.length; i += 1) {
-      intervals.push({
-        producer,
-        interval: sortedYears[i] - sortedYears[i - 1],
-        previousWin: sortedYears[i - 1],
-        followingWin: sortedYears[i],
-      });
+    if (previousWin !== undefined) {
+      const interval = year - previousWin;
+      intervals.push({ producer, interval, previousWin, followingWin: year });
     }
+
+    lastWinYearByProducer.set(producer, year);
   }
 
   return intervals;
 }
 
+function pickMinAndMax(intervals: ProducerInterval[]): ProducerIntervalResponse {
+  let min: ProducerInterval[] = [];
+  let max: ProducerInterval[] = [];
+
+  for (const interval of intervals) {
+    if (min.length === 0 || interval.interval < min[0].interval) {
+      min = [interval];
+    } else if (interval.interval === min[0].interval) {
+      min.push(interval);
+    }
+
+    if (max.length === 0 || interval.interval > max[0].interval) {
+      max = [interval];
+    } else if (interval.interval === max[0].interval) {
+      max.push(interval);
+    }
+  }
+
+  return { min, max };
+}
+
 export function getProducerWinIntervals(): ProducerIntervalResponse {
-  const movies = findAllMovies();
-  const winningYearsByProducer = groupWinningYearsByProducer(movies);
-  const intervals = calculateIntervals(winningYearsByProducer);
+  const winningCredits = findWinningMovieCreditsSortedByYear();
+  const intervals = calculateIntervals(winningCredits);
+  const producerWinIntervals = pickMinAndMax(intervals);
 
-  const allIntervalValues = intervals.map((item) => item.interval);
-  const minInterval = Math.min(...allIntervalValues);
-  const maxInterval = Math.max(...allIntervalValues);
-
-  return {
-    min: intervals.filter((item) => item.interval === minInterval),
-    max: intervals.filter((item) => item.interval === maxInterval),
-  };
+  return producerWinIntervals;
 }
