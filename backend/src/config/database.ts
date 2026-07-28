@@ -8,7 +8,7 @@ db.exec(`
     year INTEGER NOT NULL,
     title TEXT NOT NULL,
     studios TEXT NOT NULL,
-    producers TEXT NOT NULL,
+    producer TEXT NOT NULL,
     winner INTEGER NOT NULL
   )
 `);

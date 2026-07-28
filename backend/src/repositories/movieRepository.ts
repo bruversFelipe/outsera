@@ -6,13 +6,13 @@ interface MovieRow {
   year: number;
   title: string;
   studios: string;
-  producers: string;
+  producer: string;
   winner: number;
 }
 
 const insertStatement = db.prepare(
-  `INSERT INTO movies (year, title, studios, producers, winner)
-   VALUES (@year, @title, @studios, @producers, @winner)`,
+  `INSERT INTO movies (year, title, studios, producer, winner)
+   VALUES (@year, @title, @studios, @producer, @winner)`,
 );
 
 export function insertMovie(movie: Movie): void {
@@ -20,7 +20,7 @@ export function insertMovie(movie: Movie): void {
     year: movie.year,
     title: movie.title,
     studios: JSON.stringify(movie.studios),
-    producers: JSON.stringify(movie.producers),
+    producer: movie.producer,
     winner: movie.winner ? 1 : 0,
   });
 }
@@ -30,14 +30,16 @@ function toMovie(row: MovieRow): Movie {
     year: row.year,
     title: row.title,
     studios: JSON.parse(row.studios) as string[],
-    producers: JSON.parse(row.producers) as string[],
+    producer: row.producer,
     winner: row.winner === 1,
   };
 }
 
-export function findAllMovies(): Movie[] {
+export function findWinningMovieCreditsSortedByYear(): Movie[] {
   const rows = db
-    .prepare("SELECT year, title, studios, producers, winner FROM movies")
+    .prepare(
+      "SELECT year, title, studios, producer, winner FROM movies WHERE winner = 1 ORDER BY year ASC",
+    )
     .all() as MovieRow[];
 
   return rows.map(toMovie);
